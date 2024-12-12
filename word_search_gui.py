@@ -152,7 +152,7 @@ class WordSearchGame:
 
             # Refresh the board to reflect found words
             self.display_board()
-            
+
             word_search_logic.update_score(self.players[self.player_index], guess)
         else:
             messagebox.showinfo("Incorrect Guess", f"The word '{guess}' is not valid or not on the board.")
