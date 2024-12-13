@@ -14,6 +14,8 @@ class WordSearchGame:
         self.found_words = []
         self.players = []
         self.player_index = 0
+        self.time_remaining = tk.IntVar(value=30)  # Default timer value
+        self.difficulty = tk.StringVar(value="Medium")  # Default difficulty level
 
         # Game state variables
         self.remaining_words = tk.StringVar()
@@ -24,25 +26,34 @@ class WordSearchGame:
         self.create_widgets()
 
     def create_widgets(self):
+        # Difficulty selection
+        tk.Label(self.root, text="Select Difficulty:").grid(row=0, column=0, padx=10, pady=10)
+        difficulty_menu = tk.OptionMenu(self.root, self.difficulty, "Easy", "Medium", "Hard")
+        difficulty_menu.grid(row=0, column=1, padx=10, pady=10)
+
         # File selection buttons
-        tk.Button(self.root, text="Load Words List", command=self.load_words_file).grid(row=0, column=0, padx=10, pady=10)
-        tk.Button(self.root, text="Load Board File", command=self.load_board_file).grid(row=0, column=1, padx=10, pady=10)
+        tk.Button(self.root, text="Load Words List", command=self.load_words_file).grid(row=1, column=0, padx=10, pady=10)
+        tk.Button(self.root, text="Load Board File", command=self.load_board_file).grid(row=1, column=1, padx=10, pady=10)
 
         # Players input
-        tk.Button(self.root, text="Add Players", command=self.add_players).grid(row=0, column=2, padx=10, pady=10)
+        tk.Button(self.root, text="Add Players", command=self.add_players).grid(row=1, column=2, padx=10, pady=10)
 
         # Display board
         self.board_frame = tk.Frame(self.root)
-        self.board_frame.grid(row=1, column=0, columnspan=3, pady=10)
+        self.board_frame.grid(row=2, column=0, columnspan=3, pady=10)
+
+        # Timer display
+        tk.Label(self.root, text="Time Remaining:").grid(row=3, column=0, pady=10)
+        tk.Label(self.root, textvariable=self.time_remaining).grid(row=3, column=1, pady=10)
 
         # Word guess input
-        tk.Label(self.root, text="Enter your guess:").grid(row=2, column=0, pady=10)
-        tk.Entry(self.root, textvariable=self.guess_word).grid(row=2, column=1, pady=10)
-        tk.Button(self.root, text="Submit Guess", command=self.submit_guess).grid(row=2, column=2, pady=10)
+        tk.Label(self.root, text="Enter your guess:").grid(row=4, column=0, pady=10)
+        tk.Entry(self.root, textvariable=self.guess_word).grid(row=4, column=1, pady=10)
+        tk.Button(self.root, text="Submit Guess", command=self.submit_guess).grid(row=4, column=2, pady=10)
 
         # Player info and score
         self.info_frame = tk.Frame(self.root)
-        self.info_frame.grid(row=3, column=0, columnspan=3, pady=10)
+        self.info_frame.grid(row=5, column=0, columnspan=3, pady=10)
 
         tk.Label(self.info_frame, text="Current Player:").grid(row=0, column=0)
         tk.Label(self.info_frame, textvariable=self.current_player).grid(row=0, column=1)
@@ -51,9 +62,9 @@ class WordSearchGame:
         tk.Label(self.info_frame, textvariable=self.remaining_words).grid(row=1, column=1)
 
         # Found words
-        tk.Label(self.root, text="Found Words:").grid(row=4, column=0, pady=10)
+        tk.Label(self.root, text="Found Words:").grid(row=6, column=0, pady=10)
         self.found_words_text = tk.Text(self.root, height=10, width=50, state=tk.DISABLED)
-        self.found_words_text.grid(row=4, column=1, columnspan=2)
+        self.found_words_text.grid(row=6, column=1, columnspan=2)
 
     def load_words_file(self):
         file_path = filedialog.askopenfilename(title="Select Words List File")
@@ -67,8 +78,22 @@ class WordSearchGame:
         if file_path:
             with open(file_path, 'r') as board_file:
                 self.board = word_search_logic.read_board(board_file)
+            self.adjust_board_to_difficulty()
             self.display_board()
             messagebox.showinfo("Board Loaded", "Successfully loaded the board!")
+
+    def adjust_board_to_difficulty(self):
+        """Adjust the board size and word list based on the selected difficulty."""
+        difficulty = self.difficulty.get()
+        if difficulty == "Easy":
+            self.time_remaining.set(45)  # Easy: Longer timer
+            self.words = [word for word in self.words if len(word) >= 5]
+        elif difficulty == "Medium":
+            self.time_remaining.set(30)  # Medium: Standard timer
+            self.words = [word for word in self.words if 4 <= len(word) <= 6]
+        elif difficulty == "Hard":
+            self.time_remaining.set(15)  # Hard: Short timer
+            self.words = [word for word in self.words if len(word) <= 5]
 
     def display_board(self):
         for widget in self.board_frame.winfo_children():
@@ -126,8 +151,25 @@ class WordSearchGame:
         self.found_words = []
         self.remaining_words.set(len(self.words))
         self.update_current_player()
+        self.start_timer()
         messagebox.showinfo("Game Started", "Game has started! Players take turns guessing words.")
 
+    def start_timer(self):
+        """Start the timer for the current player's turn."""
+        if self.time_remaining.get() > 0:
+            self.time_remaining.set(self.time_remaining.get() - 1)
+            self.root.after(1000, self.start_timer)
+        else:
+            messagebox.showinfo("Time's Up!", f"{self.current_player.get()}'s turn is over!")
+            self.next_turn()
+
+    def next_turn(self):
+        """Switch to the next player's turn."""
+        self.player_index = (self.player_index + 1) % len(self.players)
+        self.update_current_player()
+        self.time_remaining.set(30)  # Reset timer
+        self.start_timer()
+        
     def update_current_player(self):
         if self.players:
             self.current_player.set(self.players[self.player_index][0])
